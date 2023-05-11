@@ -1,0 +1,27 @@
+version: '3.7'
+
+services:
+  server:
+    build: 
+      context: ./server
+      dockerfile: Dockerfile
+    networks:
+      - parishapp    
+    volumes:
+      - type: bind
+        source: ./server/
+        target: /usr/src/server 
+    ports:
+      # - 8555:8555
+      - 8555:8555
+    env_file:
+      - .env.dev.server
+      - .env
+    external_links:
+      - postgres
+
+networks:
+  parishapp:
+    name: parishapp
+    external: true
+    driver: bridge  

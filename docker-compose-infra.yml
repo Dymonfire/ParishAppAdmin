@@ -1,0 +1,42 @@
+version: '3.7'
+
+services:
+  postgres:
+    image: postgres:13-alpine
+    volumes:
+      - postgres:/var/lib/postgresql/data
+      - ./postgres-init-scripts:/docker-entrypoint-initdb.d
+      # - ./postgres/ssl/certs:/etc/ssl/postgres:ro
+    restart: 'always'
+    ports:
+      - 5444:5432
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    networks:
+      - parishapp
+
+
+volumes:
+  postgres:
+    driver: local
+    # comment out external when starting for first time, set true after
+    # external: true
+
+networks:
+  parishapp:
+    name: parishapp
+    # comment out external when starting for first time, set true after
+    # external: true
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+      - subnet: 10.104.0.1/16  
+
+  # internal:
+  #   # external: false
+  #   driver: bridge 
+
+ 

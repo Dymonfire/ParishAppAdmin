@@ -1,0 +1,75 @@
+FROM --platform=linux/amd64 python:3.7
+# (Top level) docker build --no-cache -t deid/flask_base -f server/Dockerfile.base ./server/
+
+# For installing microsoft sqlserver odbc 17 https://stackoverflow.com/questions/46405777/connect-docker-python-to-sql-server-with-pyodbc
+WORKDIR /app
+#  apt-get and system utilities
+RUN apt-get update && apt-get install -y unixodbc unixodbc-dev\
+    curl apt-utils apt-transport-https gcc build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# adding custom Microsoft repository
+RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
+# RUN curl https://packages.microsoft.com/config/ubuntu/18.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
+RUN curl https://packages.microsoft.com/config/debian/10/prod.list > /etc/apt/sources.list.d/mssql-release.list
+
+# install SQL Server drivers
+RUN apt-get update && ACCEPT_EULA=Y apt-get install -y  msodbcsql17 
+
+# install SQL Server tools
+RUN apt-get update && ACCEPT_EULA=Y apt-get install -y mssql-tools
+RUN echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bash_profile
+RUN echo 'export PATH="$PATH:/opt/mssql-tools/bin"' >> ~/.bashrc
+RUN /bin/bash -c "source ~/.bashrc"
+RUN /bin/bash -c "source ~/.bash_profile"
+
+# install Textual utils
+RUN apt-get clean
+RUN apt-get update
+RUN apt-get install poppler-utils -y
+RUN apt-get install tesseract-ocr -y
+
+# install necessary locales, this prevents any locale errors related to Microsoft packages (not really neccessary unless bug comes up)
+# RUN apt-get update && apt-get install -y locales \
+#     && echo "en_US.UTF-8 UTF-8" > /etc/locale.gen \
+#     && locale-gen
+
+
+# Install Java for Apache Spark usage
+# RUN apt install -y openjdk-11-jre
+
+###### Install cx_oracle #######
+RUN apt-get update && apt-get install -y libaio1 
+WORKDIR /opt/oracle
+
+RUN wget https://download.oracle.com/otn_software/linux/instantclient/instantclient-basiclite-linuxx64.zip && \
+    unzip instantclient-basiclite-linuxx64.zip && \
+    rm -f instantclient-basiclite-linuxx64.zip && \
+    cd instantclient* && \
+    rm -f *jdbc* *occi* *mysql* *jar uidrvci genezi adrci && \
+    echo /opt/oracle/instantclient* > /etc/ld.so.conf.d/oracle-instantclient.conf && \
+    ldconfig
+
+################################
+
+WORKDIR /usr/src/flask
+ 
+# COPY ./requirements.txt /server/requirements.txt
+# COPY server/requirements.txt /usr/src/flask/requirements.txt
+COPY ./requirements /usr/src/flask/requirements
+
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+# RUN pip install --upgrade pip
+RUN curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py
+RUN python get-pip.py pip==20.2
+
+RUN pip install -r requirements/requirements.txt
+RUN pip install --no-index --find-links=requirements/ common-code
+RUN mkdir ../external_files
+#RUN mkdir ../external_files/global_data
+#RUN mkdir ../external_files/global_data/input_data
+#RUN mkdir ../external_files/user_data
+RUN mkdir ./storage
+#RUN mkdir ./storage/cache
+RUN mkdir ./logs
